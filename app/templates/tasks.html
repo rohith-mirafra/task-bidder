@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-header">
+  <h1>Tasks</h1>
+  {% if current_user.is_creator %}
+    <a class="button" href="{{ url_for('tasks.new_task') }}">+ New Task</a>
+  {% endif %}
+</div>
+
+<form method="get" class="filters">
+  <select name="owner_id" onchange="this.form.submit()">
+    <option value="">All owners</option>
+    {% for c in creators %}
+      <option value="{{ c.id }}" {% if request.args.get('owner_id')|string == c.id|string %}selected{% endif %}>{{ c.display_name }}</option>
+    {% endfor %}
+  </select>
+
+  <select name="assignee_id" onchange="this.form.submit()">
+    <option value="">All assignees</option>
+    <option value="unassigned" {% if request.args.get('assignee_id') == 'unassigned' %}selected{% endif %}>Unassigned</option>
+    {% for w in workers %}
+      <option value="{{ w.id }}" {% if request.args.get('assignee_id')|string == w.id|string %}selected{% endif %}>{{ w.display_name }}</option>
+    {% endfor %}
+  </select>
+
+  <select name="status" onchange="this.form.submit()">
+    <option value="">All statuses</option>
+    {% for s in ['open', 'claimed', 'in_progress', 'done'] %}
+      <option value="{{ s }}" {% if request.args.get('status') == s %}selected{% endif %}>{{ s.replace('_', ' ') }}</option>
+    {% endfor %}
+  </select>
+
+  {% if request.args %}
+    <a href="{{ url_for('tasks.list_tasks') }}">Clear filters</a>
+  {% endif %}
+</form>
+
+<table>
+  <thead>
+    <tr>
+      <th>Task</th>
+      <th>Points</th>
+      <th>Priority</th>
+      <th>Deadline</th>
+      <th>Status</th>
+      <th>Owner</th>
+      <th>Assignee</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for task in tasks %}
+      {% include 'partials/_task_row.html' %}
+    {% else %}
+      <tr><td colspan="8" class="empty">No tasks match these filters.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

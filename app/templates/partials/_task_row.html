@@ -1,0 +1,49 @@
+<tr id="task-{{ task.id }}">
+  <td>
+    <div class="task-title">{{ task.title }}</div>
+    {% if task.description %}<div class="muted">{{ task.description }}</div>{% endif %}
+  </td>
+  <td>{{ task.points }}</td>
+  <td><span class="priority priority-{{ task.priority }}">{{ task.priority }}</span></td>
+  <td>{{ task.deadline.strftime('%Y-%m-%d') if task.deadline else '—' }}</td>
+  <td><span class="status status-{{ task.status }}">{{ task.status.replace('_', ' ') }}</span></td>
+  <td>{{ task.owner.display_name }}</td>
+  <td>{{ task.assignee.display_name if task.assignee else '—' }}</td>
+  <td class="actions">
+    {% if current_user.is_worker and task.status == 'open' %}
+      <form hx-post="{{ url_for('tasks.claim_task', task_id=task.id) }}" hx-target="#task-{{ task.id }}" hx-swap="outerHTML">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Claim</button>
+      </form>
+    {% endif %}
+
+    {% if task.assignee_id == current_user.id %}
+      {% if task.status == 'claimed' %}
+        <form hx-post="{{ url_for('tasks.update_status', task_id=task.id) }}" hx-target="#task-{{ task.id }}" hx-swap="outerHTML">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="new_status" value="in_progress">
+          <button type="submit">Start</button>
+        </form>
+      {% elif task.status == 'in_progress' %}
+        <form hx-post="{{ url_for('tasks.update_status', task_id=task.id) }}" hx-target="#task-{{ task.id }}" hx-swap="outerHTML">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="new_status" value="done">
+          <button type="submit">Mark done</button>
+        </form>
+      {% endif %}
+    {% endif %}
+
+    {% if current_user.is_creator and task.status != 'done' %}
+      <form hx-post="{{ url_for('tasks.reassign_task', task_id=task.id) }}" hx-target="#task-{{ task.id }}" hx-swap="outerHTML" class="reassign-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <select name="assignee_id">
+          <option value="">— unassign —</option>
+          {% for w in workers %}
+            <option value="{{ w.id }}" {% if task.assignee_id == w.id %}selected{% endif %}>{{ w.display_name }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit">Assign</button>
+      </form>
+    {% endif %}
+  </td>
+</tr>

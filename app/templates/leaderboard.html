@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Leaderboard</h1>
+<table>
+  <thead>
+    <tr><th>Rank</th><th>Name</th><th>Points</th><th>Tasks done</th></tr>
+  </thead>
+  <tbody>
+    {% for user, total_points, tasks_done in rows %}
+      <tr>
+        <td>{{ loop.index }}{% if loop.index == 1 %} 🏆{% endif %}</td>
+        <td>{{ user.display_name }}</td>
+        <td>{{ total_points }}</td>
+        <td>{{ tasks_done }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="empty">No completed tasks yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
