@@ -2,6 +2,18 @@
   <td>
     <div class="task-title">{{ task.title }}</div>
     {% if task.description %}<div class="muted">{{ task.description }}</div>{% endif %}
+    {% if task.has_skill_requirement %}
+      <div class="skills-tag">Requires: {{ task.required_skills }}</div>
+      <div class="muted">
+        {% set eligible_count = task.eligibility_rows|length %}
+        {% if task.eligibility_computed_at %}
+          {{ eligible_count }} eligible worker{{ '' if eligible_count == 1 else 's' }}
+          as of {{ task.eligibility_computed_at.strftime('%Y-%m-%d %H:%M') }} UTC
+        {% else %}
+          selection not run yet
+        {% endif %}
+      </div>
+    {% endif %}
   </td>
   <td>{{ task.points }}</td>
   <td><span class="priority priority-{{ task.priority }}">{{ task.priority }}</span></td>
@@ -11,10 +23,14 @@
   <td>{{ task.assignee.display_name if task.assignee else '—' }}</td>
   <td class="actions">
     {% if current_user.is_worker and task.status == 'open' %}
-      <form hx-post="{{ url_for('tasks.claim_task', task_id=task.id) }}" hx-target="#task-{{ task.id }}" hx-swap="outerHTML">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit">Claim</button>
-      </form>
+      {% if task.is_worker_eligible(current_user.id) %}
+        <form hx-post="{{ url_for('tasks.claim_task', task_id=task.id) }}" hx-target="#task-{{ task.id }}" hx-swap="outerHTML">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit">Claim</button>
+        </form>
+      {% else %}
+        <span class="muted">Not eligible (requires: {{ task.required_skills }})</span>
+      {% endif %}
     {% endif %}
 
     {% if task.assignee_id == current_user.id %}
@@ -31,6 +47,13 @@
           <button type="submit">Mark done</button>
         </form>
       {% endif %}
+    {% endif %}
+
+    {% if current_user.is_admin and task.has_skill_requirement and task.status != 'done' %}
+      <form hx-post="{{ url_for('tasks.run_selection', task_id=task.id) }}" hx-target="#task-{{ task.id }}" hx-swap="outerHTML">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Run selection</button>
+      </form>
     {% endif %}
 
     {% if current_user.is_creator and task.status != 'done' %}

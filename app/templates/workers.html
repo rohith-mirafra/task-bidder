@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Workers</h1>
+<p class="muted">
+  Edit a worker's skills, then go run selection on any task that needs
+  re-matching against the updated pool.
+</p>
+<table>
+  <thead><tr><th>Name</th><th>Username</th><th>Skills</th><th></th></tr></thead>
+  <tbody>
+    {% for w in workers %}
+    <tr>
+      <td>{{ w.display_name }}</td>
+      <td>{{ w.username }}</td>
+      <td colspan="2">
+        <form method="post" action="{{ url_for('admin.update_skills', user_id=w.id) }}" class="skills-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="text" name="skills" value="{{ w.skills or '' }}" placeholder="e.g. python, aws, react">
+          <button type="submit">Save</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+      <tr><td colspan="4" class="empty">No workers yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Add worker</h2>
+<form method="post" action="{{ url_for('admin.new_worker') }}" class="task-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Username <input type="text" name="username" required></label>
+  <label>Display name <input type="text" name="display_name" required></label>
+  <label>Temporary password <input type="text" name="password" required></label>
+  <label>Skills (comma-separated) <input type="text" name="skills" placeholder="e.g. python, aws, react"></label>
+  <button type="submit">Add worker</button>
+</form>
+{% endblock %}

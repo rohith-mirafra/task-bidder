@@ -119,6 +119,10 @@ th { background: #fafafa; font-size: 0.85rem; color: var(--muted); }
 .actions form { display: inline-flex; gap: 0.3rem; align-items: center; margin: 0; }
 .reassign-form select { padding: 0.25rem; border-radius: 6px; border: 1px solid var(--border); }
 
+.skills-tag { font-size: 0.8rem; color: var(--accent); margin-top: 0.15rem; }
+.skills-form { display: flex; gap: 0.4rem; align-items: center; }
+.skills-form input[type="text"] { flex: 1; padding: 0.35rem; border-radius: 6px; border: 1px solid var(--border); }
+
 .login-box {
   max-width: 320px;
   margin: 4rem auto;

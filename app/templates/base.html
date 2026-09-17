@@ -13,8 +13,11 @@
     {% if current_user.is_authenticated %}
       <a href="{{ url_for('tasks.list_tasks') }}">Tasks</a>
       <a href="{{ url_for('tasks.leaderboard') }}">Leaderboard</a>
+      {% if current_user.is_admin %}
+        <a href="{{ url_for('admin.list_workers') }}">Workers</a>
+      {% endif %}
       <span class="spacer"></span>
-      <span class="user-info">{{ current_user.display_name }} &middot; {{ current_user.role }}</span>
+      <span class="user-info">{{ current_user.display_name }} &middot; {{ current_user.role }}{% if current_user.is_admin %} &middot; admin{% endif %}</span>
       <a href="{{ url_for('auth.logout') }}">Logout</a>
     {% endif %}
   </nav>

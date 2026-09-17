@@ -21,11 +21,13 @@ def create_app():
     def load_user(user_id):
         return User.query.get(int(user_id))
 
+    from .admin import bp as admin_bp
     from .auth import bp as auth_bp
     from .tasks import bp as tasks_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(tasks_bp)
+    app.register_blueprint(admin_bp)
 
     with app.app_context():
         db.create_all()

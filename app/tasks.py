@@ -4,7 +4,8 @@ from flask import Blueprint, abort, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from .extensions import db
-from .models import Task, User
+from .models import Task, TaskEligibility, User
+from .utils import parse_skills
 
 bp = Blueprint("tasks", __name__)
 
@@ -68,6 +69,7 @@ def new_task():
 
         deadline_str = request.form.get("deadline")
         deadline = date.fromisoformat(deadline_str) if deadline_str else None
+        required_skills = request.form.get("required_skills", "").strip()
 
         task = Task(
             title=title,
@@ -75,6 +77,7 @@ def new_task():
             points=points,
             priority=priority,
             deadline=deadline,
+            required_skills=required_skills,
             owner_id=current_user.id,
         )
         db.session.add(task)
@@ -89,6 +92,8 @@ def new_task():
 def claim_task(task_id):
     task = Task.query.get_or_404(task_id)
     if not current_user.is_worker or task.status != "open":
+        abort(403)
+    if not task.is_worker_eligible(current_user.id):
         abort(403)
 
     task.assignee_id = current_user.id
@@ -135,6 +140,27 @@ def reassign_task(task_id):
         task.status = "open"
         task.claimed_at = None
 
+    db.session.commit()
+    return _render_row(task)
+
+
+@bp.route("/tasks/<int:task_id>/run-selection", methods=["POST"])
+@login_required
+def run_selection(task_id):
+    task = Task.query.get_or_404(task_id)
+    if not current_user.is_admin:
+        abort(403)
+
+    required = parse_skills(task.required_skills)
+    TaskEligibility.query.filter_by(task_id=task.id).delete()
+
+    now = datetime.utcnow()
+    if required:
+        for worker in User.query.filter_by(role="worker").all():
+            if required.issubset(parse_skills(worker.skills)):
+                db.session.add(TaskEligibility(task_id=task.id, user_id=worker.id, computed_at=now))
+
+    task.eligibility_computed_at = now
     db.session.commit()
     return _render_row(task)
 
