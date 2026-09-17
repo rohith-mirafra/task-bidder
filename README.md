@@ -49,6 +49,29 @@ strictly the task's creator, on their own tasks only.
 This is a skeleton: matching is a simple set-membership check (no fuzzy
 matching, synonyms, or weighting).
 
+## MS Teams notification on new tasks
+
+When a creator posts a new task, the app pings Microsoft Teams via
+[Incoming Webhooks](https://learn.microsoft.com/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook) -
+no bot registration or Azure AD app needed.
+
+- Copy `teams_webhooks.txt.example` to `teams_webhooks.txt` and put one
+  webhook URL per line (blank lines and `#` comments are ignored). See that
+  file for how to get a URL from a Teams channel.
+- This list is maintained directly by admins editing that file on the
+  server - it is **not** exposed through the web UI, and `teams_webhooks.txt`
+  is gitignored since each URL can post into that channel on its own (treat
+  it like a secret).
+- The file is re-read on every new task, so an admin's edit takes effect
+  immediately - no app restart needed.
+- Every URL in the file gets the same notification (title, points,
+  priority, deadline, required skills if any, and the creator's name).
+  Delivery is best-effort per URL: a bad or unreachable webhook is logged
+  and skipped rather than blocking task creation for everyone else.
+- Set `APP_BASE_URL` (env var) once the app is reachable at a real address
+  and the notification will include a "View task board" link; leave it
+  unset while running locally.
+
 ## Setup
 
 ```bash
@@ -87,11 +110,13 @@ app/
   auth.py           login/logout routes
   tasks.py          task board, claim/status/reassign/run-selection, leaderboard
   admin.py          worker list, skills editing, add-worker (admin role only)
+  notifications.py  MS Teams webhook fan-out on new tasks
   templates/        Jinja templates (+ htmx partial for task rows)
   static/style.css
-seed.py             one-off script to create user accounts
-run.py              dev server entrypoint
-config.py           SECRET_KEY / DB URL, overridable via env vars
+seed.py                    one-off script to create user accounts
+run.py                     dev server entrypoint
+config.py                  SECRET_KEY / DB URL / Teams webhook file, overridable via env vars
+teams_webhooks.txt.example template - copy to teams_webhooks.txt (gitignored) and fill in
 ```
 
 Data lives in a single SQLite file (`taskbidder.db`), created automatically.
@@ -103,8 +128,8 @@ delete it and rerun `python seed.py` rather than trying to upgrade it in place.
 
 - Self-service password change / admin user management UI beyond the basic
   add-worker and skills-editing forms.
-- MS Teams notification when a new task opens for bidding (incoming webhook
-  is the simplest next step).
+- Notifications only cover new tasks - nothing yet for reassignment,
+  approaching deadlines, or a task going stale with no claims.
 - Points-based bidding/auction instead of first-come claiming.
 - Badges / streaks beyond the raw points leaderboard.
 - Richer skill matching (fuzzy/partial match, a controlled skill vocabulary

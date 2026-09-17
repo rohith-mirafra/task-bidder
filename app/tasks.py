@@ -5,6 +5,7 @@ from flask_login import current_user, login_required
 
 from .extensions import db
 from .models import Task, TaskEligibility, User
+from .notifications import notify_new_task
 from .utils import parse_skills
 
 bp = Blueprint("tasks", __name__)
@@ -82,6 +83,7 @@ def new_task():
         )
         db.session.add(task)
         db.session.commit()
+        notify_new_task(task)
         return redirect(url_for("tasks.list_tasks"))
 
     return render_template("new_task.html")
