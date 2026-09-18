@@ -1,0 +1,21 @@
+# Microsoft Teams "Incoming Webhook" URLs for the C group (task creators),
+# one per line. Every URL here gets pinged on two events, regardless of
+# which creator owns the task:
+#   - a worker claims a task
+#   - a worker marks a task done (submits it for review)
+#
+# How to add one:
+#   1. In Microsoft Teams, open the channel or chat where creators should
+#      see these pings (a "Task Bidder - Creators" channel works well if you
+#      want everyone in one place).
+#   2. Channel menu (...) -> Connectors -> Incoming Webhook -> Configure.
+#   3. Give it a name and copy the generated URL.
+#   4. Paste that URL on its own line below.
+#
+# Maintained directly by admins by editing this file on the server - not
+# exposed through the web UI. Copy this file to teams_webhooks_creators.txt
+# (drop the .example) and fill in real URLs; that file is gitignored since
+# each URL can post into that channel on its own (treat it like a secret).
+#
+# Blank lines and lines starting with # are ignored. This is a separate
+# list from teams_webhooks.txt (which only covers new-task notifications).

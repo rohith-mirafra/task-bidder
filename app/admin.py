@@ -1,8 +1,9 @@
-from flask import Blueprint, abort, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from .extensions import db
-from .models import User
+from .models import Task, User
+from .utils import refresh_task_eligibility
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -48,4 +49,19 @@ def new_worker():
     worker.set_password(password)
     db.session.add(worker)
     db.session.commit()
+    return redirect(url_for("admin.list_workers"))
+
+
+@bp.route("/refresh-eligibility", methods=["POST"])
+@login_required
+def refresh_eligibility():
+    _require_admin()
+    # One global trigger, not a per-task button: the worker pool is what
+    # actually changes (new workers, edited skills), so a single pass
+    # recomputes every task that has a skill requirement and isn't done yet.
+    tasks = [t for t in Task.query.filter(Task.status != "done").all() if t.has_skill_requirement]
+    for task in tasks:
+        refresh_task_eligibility(task)
+    db.session.commit()
+    flash(f"Refreshed eligibility for {len(tasks)} task(s).")
     return redirect(url_for("admin.list_workers"))

@@ -1,0 +1,27 @@
+# One worker per line: "username,webhook_url"
+#
+# When a creator posts a new task, the app computes eligibility immediately
+# (required_skills is mandatory) and pings ONLY the workers who currently
+# qualify - looked up here by username. Anyone not eligible for a given
+# task, or not listed here at all, hears nothing about it. This is
+# different from teams_webhooks_creators.txt, which broadcasts to a flat
+# list rather than filtering per person.
+#
+# The username must match a worker's login username exactly (see the
+# Workers page or seed.py). The webhook URL is a personal Incoming Webhook
+# for that worker - e.g. a 1:1 chat or personal channel they've configured:
+#   1. In Microsoft Teams, open the chat/channel where that worker wants
+#      their task pings.
+#   2. Channel menu (...) -> Connectors -> Incoming Webhook -> Configure.
+#   3. Give it a name and copy the generated URL.
+#   4. Add a line below: worker_username,https://...
+#
+# Maintained directly by admins by editing this file on the server - not
+# exposed through the web UI. Copy this file to teams_webhooks_workers.txt
+# (drop the .example) and fill in real usernames/URLs; that file is
+# gitignored since each URL can post on its own (treat it like a secret).
+#
+# Blank lines, lines starting with #, and lines without a comma are ignored.
+#
+# worker1,https://outlook.office.com/webhook/...
+# worker2,https://outlook.office.com/webhook/...

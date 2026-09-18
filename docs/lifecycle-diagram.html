@@ -1,0 +1,539 @@
+<title>Task Bidder Lifecycle</title>
+<style>
+  :root {
+    --bg: #F5F5FA;
+    --surface: #FFFFFF;
+    --ink: #14141A;
+    --ink-soft: #55555F;
+    --border: #DEDEE8;
+    --grid-line: rgba(79,70,229,0.06);
+
+    --creator: #4F46E5;
+    --creator-soft: #EEEDFD;
+    --worker: #0D9488;
+    --worker-soft: #E4F5F3;
+    --admin: #B45309;
+    --admin-soft: #FBF0E2;
+    --teams: #6D5BD0;
+    --teams-soft: #EFEDFB;
+    --system: #64748B;
+    --system-soft: #EEF1F4;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101014;
+      --surface: #17171F;
+      --ink: #ECECF2;
+      --ink-soft: #A6A6B4;
+      --border: #2B2B36;
+      --grid-line: rgba(129,140,248,0.08);
+
+      --creator: #8B85F1;
+      --creator-soft: #232149;
+      --worker: #2DD4BF;
+      --worker-soft: #0F2E2B;
+      --admin: #F4A83F;
+      --admin-soft: #362509;
+      --teams: #A79BEE;
+      --teams-soft: #26224A;
+      --system: #98A3B5;
+      --system-soft: #1E2229;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101014;
+    --surface: #17171F;
+    --ink: #ECECF2;
+    --ink-soft: #A6A6B4;
+    --border: #2B2B36;
+    --grid-line: rgba(129,140,248,0.08);
+
+    --creator: #8B85F1;
+    --creator-soft: #232149;
+    --worker: #2DD4BF;
+    --worker-soft: #0F2E2B;
+    --admin: #F4A83F;
+    --admin-soft: #362509;
+    --teams: #A79BEE;
+    --teams-soft: #26224A;
+    --system: #98A3B5;
+    --system-soft: #1E2229;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color: var(--ink);
+    font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+    padding-inline: 20px;
+  }
+
+  main {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding-block: 48px 64px;
+  }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--creator);
+    margin: 0 0 10px;
+  }
+
+  h1 {
+    font-size: clamp(26px, 4vw, 38px);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0 0 12px;
+  }
+
+  .lede {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    max-width: 68ch;
+    margin: 0 0 32px;
+  }
+
+  .lede code, .card code, figcaption code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.92em;
+    background: var(--system-soft);
+    padding: 0.05em 0.35em;
+    border-radius: 4px;
+  }
+
+  /* ---- actor legend ---- */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 40px;
+  }
+  .chip {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 13px;
+  }
+  .chip .dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    flex: none;
+    transform: translateY(1px);
+  }
+  .chip b { font-weight: 600; }
+  .chip span.role-desc { color: var(--ink-soft); }
+  .chip.creator .dot { background: var(--creator); }
+  .chip.worker .dot { background: var(--worker); }
+  .chip.admin .dot { background: var(--admin); }
+  .chip.teams .dot { background: var(--teams); }
+
+  /* ---- diagram sections ---- */
+  section.diagram {
+    margin-bottom: 40px;
+  }
+  section.diagram h2 {
+    font-size: 13px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 14px;
+  }
+
+  figure { margin: 0; }
+  .diagram-scroll {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    padding: 8px;
+  }
+  .diagram-scroll svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  #main-flow svg { min-width: 1080px; }
+  #gating-detail svg { min-width: 820px; }
+
+  figcaption {
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    padding: 12px 4px 0;
+    max-width: 78ch;
+  }
+
+  /* svg element classes, shared by both figures */
+  .node-fill { fill: var(--surface); }
+  .node-stroke { stroke: var(--border); stroke-width: 1.4; }
+  .node-title { font-family: "IBM Plex Sans", sans-serif; font-weight: 600; font-size: 14px; fill: var(--ink); }
+  .node-caption { font-family: "IBM Plex Sans", sans-serif; font-size: 11px; fill: var(--ink-soft); }
+  .state-title { font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 600; font-size: 15px; fill: var(--ink); }
+  .state-caption { font-family: "IBM Plex Sans", sans-serif; font-size: 10.5px; fill: var(--ink-soft); }
+  .arrow-label { font-family: "IBM Plex Sans", sans-serif; font-size: 11px; font-weight: 500; }
+
+  .fill-creator { fill: var(--creator); } .stroke-creator { stroke: var(--creator); } .text-creator { fill: var(--creator); }
+  .fill-worker  { fill: var(--worker); }  .stroke-worker  { stroke: var(--worker); }  .text-worker  { fill: var(--worker); }
+  .fill-admin   { fill: var(--admin); }   .stroke-admin   { stroke: var(--admin); }   .text-admin   { fill: var(--admin); }
+  .fill-teams   { fill: var(--teams); }   .stroke-teams   { stroke: var(--teams); }   .text-teams   { fill: var(--teams); }
+  .fill-system  { fill: var(--system); }  .stroke-system  { stroke: var(--system); } .text-system  { fill: var(--system); }
+
+  .box-creator { fill: var(--creator-soft); stroke: var(--creator); }
+  .box-worker  { fill: var(--worker-soft);  stroke: var(--worker); }
+  .box-admin   { fill: var(--admin-soft);   stroke: var(--admin); }
+  .box-teams   { fill: var(--teams-soft);   stroke: var(--teams); }
+  .box-system  { fill: var(--system-soft);  stroke: var(--system); }
+
+  .line { fill: none; stroke-width: 2; }
+  .dashed { stroke-dasharray: 6 5; }
+
+  /* ---- notes ---- */
+  .notes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent, var(--ink-soft));
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .card h3 {
+    margin: 0 0 6px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .card p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+  .card.c-creator { --accent: var(--creator); }
+  .card.c-admin { --accent: var(--admin); }
+  .card.c-teams { --accent: var(--teams); }
+  .card.c-worker { --accent: var(--worker); }
+
+  footer {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<main>
+  <p class="eyebrow">Task Bidder — process reference</p>
+  <h1>How a task moves through the system</h1>
+  <p class="lede">
+    One state machine (<code>open → claimed → in_progress → pending_review →
+    done</code>), four actors, and one outside system. This is what actually
+    happens between a creator typing a title and a worker banking the points.
+  </p>
+
+  <div class="legend">
+    <span class="chip creator"><span class="dot"></span><b>Creator</b><span class="role-desc">posts tasks with mandatory required_skills, vets their own tasks' completion</span></span>
+    <span class="chip worker"><span class="dot"></span><b>Worker</b><span class="role-desc">sees only eligible tasks, claims, works, submits for review</span></span>
+    <span class="chip admin"><span class="dot"></span><b>Admin</b><span class="role-desc">is_admin flag — refreshes/edits eligibility, overrides claims</span></span>
+    <span class="chip teams"><span class="dot"></span><b>MS Teams</b><span class="role-desc">external — one-way, filtered to eligible workers</span></span>
+  </div>
+
+  <section class="diagram" id="main-flow">
+    <h2>01 — Task lifecycle</h2>
+    <div class="diagram-scroll">
+      <svg viewBox="0 0 1380 620" role="img" aria-label="Diagram of a task's lifecycle from creation through open, claimed, in_progress, pending_review, and done, showing which actor triggers each step: eligibility computed automatically and mandatorily at creation, the skill-eligibility gate before claiming, the worker submitting for review, the task's own creator approving or rejecting that review, the creator-or-admin reassignment override, and the Teams notification going only to eligible workers.">
+        <defs>
+          <marker id="a-creator" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" class="fill-creator" />
+          </marker>
+          <marker id="a-worker" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" class="fill-worker" />
+          </marker>
+          <marker id="a-admin" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" class="fill-admin" />
+          </marker>
+          <marker id="a-teams" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" class="fill-teams" />
+          </marker>
+          <marker id="a-system" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" class="fill-system" />
+          </marker>
+        </defs>
+
+        <!-- Creator box -->
+        <rect x="30" y="30" width="210" height="86" rx="12" class="box-creator" />
+        <text x="135" y="66" text-anchor="middle" class="node-title text-creator">CREATOR</text>
+        <text x="135" y="86" text-anchor="middle" class="node-caption">sets title, points, deadline,</text>
+        <text x="135" y="100" text-anchor="middle" class="node-caption">required_skills (mandatory)</text>
+
+        <!-- Teams box -->
+        <rect x="1140" y="30" width="210" height="86" rx="12" class="box-teams" />
+        <text x="1245" y="66" text-anchor="middle" class="node-title text-teams">MS TEAMS</text>
+        <text x="1245" y="86" text-anchor="middle" class="node-caption">only workers eligible</text>
+        <text x="1245" y="100" text-anchor="middle" class="node-caption">for THIS task get pinged</text>
+
+        <!-- Admin box -->
+        <rect x="165" y="150" width="190" height="68" rx="12" class="box-admin" />
+        <text x="260" y="180" text-anchor="middle" class="node-title text-admin">ADMIN</text>
+        <text x="260" y="199" text-anchor="middle" class="node-caption">refreshes eligibility, globally</text>
+
+        <!-- Spine nodes -->
+        <rect x="30" y="300" width="150" height="72" rx="10" class="node-fill node-stroke" />
+        <text x="105" y="332" text-anchor="middle" class="state-title">open</text>
+        <text x="105" y="350" text-anchor="middle" class="state-caption">posted for bidding</text>
+
+        <!-- gate diamond -->
+        <polygon points="260,294 302,336 260,378 218,336" class="node-fill stroke-admin" stroke-width="1.6" />
+        <text x="260" y="332" text-anchor="middle" class="arrow-label text-admin">eligible</text>
+        <text x="260" y="345" text-anchor="middle" class="arrow-label text-admin">?</text>
+
+        <rect x="350" y="300" width="150" height="72" rx="10" class="node-fill node-stroke" />
+        <text x="425" y="332" text-anchor="middle" class="state-title">claimed</text>
+        <text x="425" y="350" text-anchor="middle" class="state-caption">assigned to one worker</text>
+
+        <rect x="580" y="300" width="180" height="72" rx="10" class="node-fill node-stroke" />
+        <text x="670" y="332" text-anchor="middle" class="state-title">in_progress</text>
+        <text x="670" y="350" text-anchor="middle" class="state-caption">worker is doing it</text>
+
+        <rect x="850" y="300" width="200" height="72" rx="10" class="node-fill node-stroke" />
+        <text x="950" y="332" text-anchor="middle" class="state-title">pending_review</text>
+        <text x="950" y="350" text-anchor="middle" class="state-caption">waiting on the owner</text>
+
+        <rect x="1170" y="300" width="140" height="72" rx="10" class="node-fill node-stroke" />
+        <text x="1240" y="332" text-anchor="middle" class="state-title">done</text>
+        <text x="1240" y="350" text-anchor="middle" class="state-caption">approved, complete</text>
+
+        <!-- Leaderboard -->
+        <rect x="1170" y="450" width="140" height="60" rx="10" class="box-worker" />
+        <text x="1240" y="476" text-anchor="middle" class="node-title text-worker">LEADERBOARD</text>
+        <text x="1240" y="494" text-anchor="middle" class="node-caption">points credited</text>
+
+        <!-- Creator -> open -->
+        <line x1="135" y1="116" x2="110" y2="298" class="line stroke-creator" marker-end="url(#a-creator)" />
+        <text x="150" y="215" class="arrow-label text-creator">create task</text>
+
+        <!-- Creator -> Teams: filtered by the same eligibility this creation just computed -->
+        <line x1="240" y1="73" x2="1138" y2="73" class="line dashed stroke-teams" marker-end="url(#a-teams)" />
+        <text x="689" y="52" text-anchor="middle" class="arrow-label text-teams">notify only eligible workers</text>
+        <text x="689" y="66" text-anchor="middle" class="arrow-label text-teams">(computed instantly, fire-and-forget)</text>
+
+        <!-- Admin -> gate -->
+        <line x1="260" y1="218" x2="260" y2="292" class="line stroke-admin" marker-end="url(#a-admin)" />
+        <text x="270" y="258" class="arrow-label text-admin">refresh (all tasks)</text>
+
+        <!-- open -> gate -->
+        <line x1="180" y1="336" x2="216" y2="336" class="line stroke-worker" marker-end="url(#a-worker)" />
+        <text x="198" y="322" text-anchor="middle" class="arrow-label text-worker">claim</text>
+
+        <!-- gate -> claimed (yes) -->
+        <line x1="304" y1="336" x2="348" y2="336" class="line stroke-worker" marker-end="url(#a-worker)" />
+        <text x="326" y="322" text-anchor="middle" class="arrow-label text-worker">yes</text>
+
+        <!-- gate -> open (no, rejected loop) -->
+        <path d="M 246 372 C 190 430, 130 430, 108 374" class="line dashed stroke-system" marker-end="url(#a-system)" />
+        <text x="190" y="422" text-anchor="middle" class="arrow-label text-system">not eligible — never shown, rejected if forced</text>
+
+        <!-- claimed -> in_progress -->
+        <line x1="500" y1="336" x2="578" y2="336" class="line stroke-worker" marker-end="url(#a-worker)" />
+        <text x="539" y="322" text-anchor="middle" class="arrow-label text-worker">start</text>
+
+        <!-- in_progress -> pending_review -->
+        <line x1="760" y1="336" x2="848" y2="336" class="line stroke-worker" marker-end="url(#a-worker)" />
+        <text x="804" y="322" text-anchor="middle" class="arrow-label text-worker">submit for review</text>
+
+        <!-- pending_review -> done (owner approves) -->
+        <line x1="1050" y1="336" x2="1168" y2="336" class="line stroke-creator" marker-end="url(#a-creator)" />
+        <text x="1109" y="322" text-anchor="middle" class="arrow-label text-creator">approve (owner)</text>
+
+        <!-- pending_review -> in_progress (owner rejects) -->
+        <path d="M 900 380 C 820 440, 740 440, 690 382" class="line dashed stroke-creator" marker-end="url(#a-creator)" />
+        <text x="795" y="432" text-anchor="middle" class="arrow-label text-creator">reject (owner)</text>
+
+        <!-- done -> leaderboard -->
+        <line x1="1240" y1="372" x2="1240" y2="448" class="line stroke-worker" marker-end="url(#a-worker)" />
+        <text x="1250" y="415" class="arrow-label text-worker">+points</text>
+
+        <!-- reassignment override -->
+        <path d="M 950 300 Q 500 108 108 298" class="line dashed stroke-creator" marker-end="url(#a-creator)" />
+        <text x="500" y="106" text-anchor="middle" class="arrow-label text-creator">reassign / reopen (any creator or admin)</text>
+      </svg>
+    </div>
+    <figcaption>
+      The state machine runs left to right along <code>open → claimed →
+      in_progress → pending_review → done</code>. <code>required_skills</code>
+      is mandatory, so the <b>eligible?</b> gate is always live and gets its
+      first answer automatically the instant the task is created - a worker
+      who isn't on that list never sees the task at all, on the board or in
+      Teams (the rejected-claim path shown here is the server-side backstop
+      for someone who tries anyway, not something a normal worker hits). A
+      worker drives every step up to <b>submit for review</b>; an admin's
+      <b>refresh</b> - one action that recomputes every gated task at once,
+      not a per-task button - handles eligibility drift after the fact, as
+      the worker pool keeps changing; only the task's own creator can
+      <b>approve</b> it into <code>done</code> or <b>reject</b> it back to
+      <code>in_progress</code> - a narrower power than the <b>reassign /
+      reopen</b> override any creator <i>or admin</i> holds at any point
+      before <code>done</code>, which is also how an admin overrides a
+      worker's bid outright.
+    </figcaption>
+  </section>
+
+  <section class="diagram" id="gating-detail">
+    <h2>02 — How eligibility actually gets computed</h2>
+    <div class="diagram-scroll">
+      <svg viewBox="0 0 1120 560" role="img" aria-label="Detail diagram showing eligibility is computed automatically and immediately the instant a task is created, by matching its mandatory required_skills against every current worker; separately, since that snapshot is not live, a later change to the worker pool leaves it stale until an admin's global Refresh recomputes every gated task in one pass.">
+        <defs>
+          <marker id="b-worker" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" class="fill-worker" />
+          </marker>
+          <marker id="b-admin" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" class="fill-admin" />
+          </marker>
+          <marker id="b-system" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" class="fill-system" />
+          </marker>
+          <marker id="b-teams" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" class="fill-teams" />
+          </marker>
+          <marker id="b-creator2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" class="fill-creator" />
+          </marker>
+        </defs>
+
+        <!-- immediate path: happens the instant the task is created -->
+        <rect x="20" y="60" width="180" height="70" rx="10" class="box-creator" />
+        <text x="110" y="88" text-anchor="middle" class="node-title text-creator">TASK CREATED</text>
+        <text x="110" y="107" text-anchor="middle" class="node-caption">required_skills:</text>
+        <text x="110" y="121" text-anchor="middle" class="node-caption">"python, aws"</text>
+
+        <rect x="240" y="60" width="200" height="70" rx="10" class="node-fill node-stroke" />
+        <text x="340" y="92" text-anchor="middle" class="node-title">MATCH EVERY WORKER</text>
+        <text x="340" y="110" text-anchor="middle" class="node-caption">skills ⊇ required_skills</text>
+
+        <rect x="480" y="60" width="220" height="70" rx="10" class="box-worker" />
+        <text x="590" y="88" text-anchor="middle" class="node-title text-worker">SNAPSHOT SAVED</text>
+        <text x="590" y="107" text-anchor="middle" class="node-caption">2 eligible, timestamped,</text>
+        <text x="590" y="121" text-anchor="middle" class="node-caption">right away</text>
+
+        <rect x="740" y="60" width="270" height="70" rx="10" class="box-teams" />
+        <text x="875" y="88" text-anchor="middle" class="node-title text-teams">CLAIM + TEAMS NOTIFY</text>
+        <text x="875" y="107" text-anchor="middle" class="node-caption">enabled for the 2 matched</text>
+        <text x="875" y="121" text-anchor="middle" class="node-caption">workers, immediately</text>
+
+        <!-- worker pool row, checked by the match step -->
+        <g>
+          <circle cx="255" cy="185" r="18" class="fill-worker" />
+          <circle cx="305" cy="185" r="18" fill="none" class="stroke-system" stroke-width="1.6" />
+          <circle cx="355" cy="185" r="18" class="fill-worker" />
+          <circle cx="405" cy="185" r="18" fill="none" class="stroke-system" stroke-width="1.6" />
+          <circle cx="455" cy="185" r="18" fill="none" class="stroke-system" stroke-width="1.6" />
+        </g>
+        <text x="355" y="222" text-anchor="middle" class="node-caption">5 current workers — 2 match</text>
+
+        <!-- later, separate path: the worker pool moving on -->
+        <rect x="60" y="430" width="260" height="70" rx="10" class="box-system" />
+        <text x="190" y="458" text-anchor="middle" class="node-title text-system">POOL CHANGES LATER</text>
+        <text x="190" y="477" text-anchor="middle" class="node-caption">new worker, or edited skills</text>
+
+        <rect x="380" y="430" width="260" height="70" rx="10" class="box-admin" />
+        <text x="510" y="458" text-anchor="middle" class="node-title text-admin">ADMIN CLICKS REFRESH</text>
+        <text x="510" y="477" text-anchor="middle" class="node-caption">global, every gated task</text>
+
+        <!-- immediate-path arrows -->
+        <line x1="202" y1="95" x2="238" y2="95" class="line stroke-creator" marker-end="url(#b-creator2)" />
+        <line x1="442" y1="95" x2="478" y2="95" class="line stroke-system" marker-end="url(#b-system)" />
+        <line x1="702" y1="95" x2="738" y2="95" class="line stroke-worker" marker-end="url(#b-worker)" />
+        <line x1="340" y1="132" x2="340" y2="164" class="line stroke-system" marker-end="url(#b-system)" />
+        <text x="352" y="152" class="arrow-label text-system">checks all</text>
+
+        <!-- later-path arrow -->
+        <line x1="322" y1="465" x2="378" y2="465" class="line stroke-system" marker-end="url(#b-system)" />
+
+        <!-- feedback: refresh re-runs the same match step, for every task -->
+        <path d="M 510 428 C 510 300, 340 300, 340 132" class="line stroke-admin" marker-end="url(#b-admin)" />
+        <text x="470" y="290" text-anchor="middle" class="arrow-label text-admin">re-run, for every gated task</text>
+
+        <!-- link: the immediate snapshot is what eventually goes stale -->
+        <path d="M 590 132 C 590 260, 190 260, 190 428" class="line dashed stroke-system" marker-end="url(#b-system)" />
+        <text x="365" y="255" text-anchor="middle" class="arrow-label text-system">goes stale over time</text>
+      </svg>
+    </div>
+    <figcaption>
+      Eligibility isn't something you wait on: the top row happens automatically the instant
+      a task is created, because <code>required_skills</code> is mandatory - there's no gap
+      where a task sits unmatched. The bottom row is the separate, later concern: the worker
+      pool keeps moving (new hires, updated skills), which the top row's snapshot has no way
+      to know about after the fact. That's what an admin's <b>Refresh</b> is for - one global
+      action, on the Workers page, that re-runs the same match step for every non-done gated
+      task at once, not a per-task button.
+    </figcaption>
+  </section>
+
+  <section class="notes">
+    <div class="card c-creator">
+      <h3>Admin is a flag, not a role</h3>
+      <p>It can sit on a Creator account, a Worker account, or both, and more than one person
+        can hold it. It unlocks the Workers page, eligibility refresh/edit, and the reassign
+        override — nothing about creating tasks.</p>
+    </div>
+    <div class="card c-worker">
+      <h3>Approval is owner-only, not any creator</h3>
+      <p>A worker can only push a task to pending_review. Only the task's own creator can
+        approve it into done or reject it back to in_progress — a different, narrower creator
+        power than reassignment below.</p>
+    </div>
+    <div class="card c-creator">
+      <h3>Reassignment is a full override</h3>
+      <p>Any Creator <i>or Admin</i> can hand a claimed, in-progress, or pending-review task to
+        a different worker, or reopen it — the explicit way to override a worker's bid,
+        regardless of the eligibility snapshot or who owns it.</p>
+    </div>
+    <div class="card c-admin">
+      <h3>Refresh is global, not per-task</h3>
+      <p>required_skills is set once, by the task's own creator. Who currently satisfies it is
+        recomputed only when an Admin clicks Refresh once on the Workers page — which updates
+        every gated task in that pass, never automatically and never one at a time.</p>
+    </div>
+    <div class="card c-teams">
+      <h3>Notifications are best-effort</h3>
+      <p>Every matching URL gets tried on every event. A dead or unreachable one is logged and
+        skipped — it never blocks the action that triggered it, for anyone else on the list.</p>
+    </div>
+    <div class="card c-admin">
+      <h3>Admin can edit criteria directly, per task</h3>
+      <p>Beyond the global refresh, an Admin can rewrite one task's required_skills inline on
+        its row — that always force-recomputes just that task's snapshot immediately,
+        independent of the next global refresh.</p>
+    </div>
+  </section>
+
+  <footer>
+    Reflects the app as of the worker-selection and MS Teams notification features
+    (see <code>README.md</code> in the repo for the full write-up).
+  </footer>
+</main>

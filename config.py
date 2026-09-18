@@ -10,10 +10,17 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # Plain text file, one MS Teams Incoming Webhook URL per line, maintained
-    # directly by admins (not through the web UI). See teams_webhooks.txt.example.
-    TEAMS_WEBHOOKS_FILE = os.environ.get(
-        "TEAMS_WEBHOOKS_FILE", os.path.join(basedir, "teams_webhooks.txt")
+    # "username,webhook_url" per line, one per worker, maintained directly by
+    # admins (not through the web UI). New-task notifications look up only
+    # the currently-eligible workers here - see teams_webhooks_workers.txt.example.
+    TEAMS_WORKER_WEBHOOKS_FILE = os.environ.get(
+        "TEAMS_WORKER_WEBHOOKS_FILE", os.path.join(basedir, "teams_webhooks_workers.txt")
+    )
+    # Flat list of webhook URLs, one per line: where the C group hears "task
+    # claimed" and "task submitted for review" notifications (broadcast to
+    # everyone on the list, not filtered). See teams_webhooks_creators.txt.example.
+    TEAMS_CREATOR_WEBHOOKS_FILE = os.environ.get(
+        "TEAMS_CREATOR_WEBHOOKS_FILE", os.path.join(basedir, "teams_webhooks_creators.txt")
     )
     # Used to build a "View task board" link in Teams notifications. Leave
     # unset while running locally - the link is simply omitted.

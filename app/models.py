@@ -41,13 +41,18 @@ class Task(db.Model):
     priority = db.Column(db.String(10), nullable=False, default="medium")  # low/medium/high
     deadline = db.Column(db.Date, nullable=True)
     status = db.Column(db.String(15), nullable=False, default="open")
-    # open -> claimed -> in_progress -> done
+    # open -> claimed -> in_progress -> pending_review -> done
+    # A worker can only push a task as far as pending_review; only the
+    # task's own creator can approve it into done (or reject it back to
+    # in_progress) - see review_task() in tasks.py.
 
-    # Free-text, set once by the creator (e.g. "python, aws, react"). Blank
-    # means the task is open to every worker with no skill gating.
-    required_skills = db.Column(db.Text, default="")
-    # Set each time an admin (re-)runs the selection below. Null means the
-    # selection has never been run for this task yet.
+    # Mandatory, free-text, set once by the creator at creation time (e.g.
+    # "python, aws, react"). Eligibility is computed from it immediately on
+    # creation, then only an admin can edit it or force a fresh recompute.
+    required_skills = db.Column(db.Text, nullable=False)
+    # Set whenever eligibility is (re-)computed for this task - at creation,
+    # by an admin's global refresh, or after an admin edits required_skills.
+    # Null only means it has genuinely never been computed.
     eligibility_computed_at = db.Column(db.DateTime, nullable=True)
 
     owner_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)

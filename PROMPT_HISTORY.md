@@ -134,3 +134,101 @@ Claude Code. Kept for reference - not part of the application itself.
 15. > create a history log of my prompts on this project in the working dir.
     >
     > → this file.
+
+16. > commit and push the latest code including the teams notification code
+    >
+    > → committed the Teams notification feature (`382beb8`) and this history
+    > log (`5925b87`) as separate commits and pushed both to `origin/main`.
+
+## 2026-09-18
+
+17. > create a flow diagram indicating lifecycle of a task on this utility and
+    > roles played by different actors and different 3rd party tools like MS
+    > Teams.
+    >
+    > → published an artifact (`docs/lifecycle-diagram.html`) with two
+    > diagrams: the full task state machine with each transition attributed
+    > to the actor who triggers it, and a detail view of the skill-eligibility
+    > "snapshot, not live" matching mechanism.
+
+18. **Scope addition - creator approval gate**:
+    > when a task is marked done, the respective task creator needs to vet it
+    > and approve as done. this will have to be coded in too.
+    >
+    > → added a `pending_review` stage between `in_progress` and `done`. A
+    > worker can only push a task as far as `pending_review`; only that
+    > task's own creator (not any creator - narrower than reassignment) can
+    > approve it into `done` or reject it back to `in_progress`. Points still
+    > only credit on `done`, so nothing pays out until the owner approves.
+    > Updated the lifecycle diagram artifact to match.
+
+19. **Scope addition - notify C group on claim and on submission**:
+    > when a task gets picked up by a worker and when a worker marks a task
+    > as done, a MS Teams message needs to be triggered to all members of
+    > the C group. The Teams IDs of all C group members can be assumed in
+    > another simple text file.
+    >
+    > (first attempt was interrupted before any action was taken; clarified
+    > on retry:) the message must carry the name of the worker picking up
+    > the task, and that the said worker marked the task as done. ("done"
+    > confirmed to mean the worker's submit-for-review action, not the
+    > owner's final approval.)
+    >
+    > → added `notify_task_claimed()` and `notify_task_submitted_for_review()`,
+    > both fanning out to a new admin-maintained `teams_webhooks_creators.txt`
+    > (separate list from `teams_webhooks.txt`) so every C-group member hears
+    > about it regardless of who owns the task. Each message names the
+    > worker. Approval/rejection deliberately stays silent - not requested.
+
+20. **Correction - eligibility refresh should be global, not per-task**:
+    > the Admin's eligibility compute task should not be manual. Creator of
+    > the task already defines criteria for Worker filtering for his task.
+    > The Admin only triggers a process where the Worker filtering needs to
+    > be refreshed because the sample space of W keeps changing.
+    >
+    > → removed the per-task "Run selection" button and its route entirely.
+    > Replaced with a single global "Refresh worker eligibility for all
+    > tasks" action on the Workers page that recomputes every non-`done`
+    > task with a skill requirement in one pass. Extracted the matching
+    > logic into `refresh_task_eligibility()` in `utils.py` so it's shared
+    > rather than duplicated. Also caught and fixed an unrelated bug found
+    > while testing: the task-list status filter dropdown was missing
+    > `pending_review` from the approval-gate feature. Updated the lifecycle
+    > diagram artifact's wording to match ("refresh" replacing "run
+    > selection" throughout, and the detail diagram's caption now explains
+    > it as one global pass viewed through a single task).
+
+21. **Redesign - mandatory skills, per-worker filtering, and admin override powers**:
+    > I still see a problem with the filtering. My bad in defining it
+    > improperly.
+    >
+    > Soon as a C creates a task with required_skills (make this mandatory)
+    > the filtering is derived from it, and the MS Teams message is sent to
+    > the filtered sub-set of Ws only. This way tasks are shown to only
+    > eligible Ws.
+    >
+    > Admin may just manually intervene in editing the filter criteria or
+    > overriding a W's bid and reassign to open.
+    >
+    > (clarified via two questions: per-worker Teams targeting needs a
+    > username-to-webhook mapping file rather than a shared channel; a
+    > worker's own claimed/in-progress task must stay visible to them even
+    > if the pool later shifts against them.)
+    >
+    > → `required_skills` is now mandatory (`nullable=False`, required in
+    > the form) and eligibility is computed automatically the instant a
+    > task is created - no more waiting on an admin action for the initial
+    > pass. The `/tasks` board is now filtered server-side per worker: an
+    > ineligible task doesn't appear at all (not even disabled), except a
+    > worker always keeps seeing tasks already assigned to them. The
+    > new-task Teams notification switched from a broadcast list
+    > (`teams_webhooks.txt`, removed) to a per-worker map
+    > (`teams_webhooks_workers.txt`, "username,webhook_url" per line) and
+    > now reaches only the workers in that task's eligibility snapshot.
+    > Added an admin-only inline "edit required_skills" control on each
+    > task row that force-recomputes just that task's eligibility. Widened
+    > the reassign-override to `is_creator or is_admin` (previously
+    > creator-only) so a pure admin account - even one that's a worker, not
+    > a creator - can override a claim and reopen a task. The admin's
+    > global "Refresh worker eligibility" action from the previous entry is
+    > unchanged and still handles ongoing pool drift after creation.

@@ -4,4 +4,5 @@ __pycache__/
 *.db
 .env
 instance/
-teams_webhooks.txt
+teams_webhooks_workers.txt
+teams_webhooks_creators.txt

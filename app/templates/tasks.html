@@ -25,7 +25,7 @@
 
   <select name="status" onchange="this.form.submit()">
     <option value="">All statuses</option>
-    {% for s in ['open', 'claimed', 'in_progress', 'done'] %}
+    {% for s in ['open', 'claimed', 'in_progress', 'pending_review', 'done'] %}
       <option value="{{ s }}" {% if request.args.get('status') == s %}selected{% endif %}>{{ s.replace('_', ' ') }}</option>
     {% endfor %}
   </select>

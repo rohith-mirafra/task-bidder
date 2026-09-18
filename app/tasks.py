@@ -5,8 +5,8 @@ from flask_login import current_user, login_required
 
 from .extensions import db
 from .models import Task, TaskEligibility, User
-from .notifications import notify_new_task
-from .utils import parse_skills
+from .notifications import notify_new_task, notify_task_claimed, notify_task_submitted_for_review
+from .utils import refresh_task_eligibility
 
 bp = Blueprint("tasks", __name__)
 
@@ -32,6 +32,19 @@ def index():
 @login_required
 def list_tasks():
     query = Task.query
+
+    if current_user.is_worker:
+        # Tasks are shown only to workers currently eligible for them - a
+        # worker never sees a task they can't claim just by browsing. The
+        # one exception is a task they're already assigned to: eligibility
+        # can drift after they claim it (the pool keeps changing), but work
+        # already in progress must never disappear from their own board.
+        eligible_task_ids = db.session.query(TaskEligibility.task_id).filter(
+            TaskEligibility.user_id == current_user.id
+        )
+        query = query.filter(
+            db.or_(Task.assignee_id == current_user.id, Task.id.in_(eligible_task_ids))
+        )
 
     owner_id = request.args.get("owner_id")
     assignee_id = request.args.get("assignee_id")
@@ -71,6 +84,8 @@ def new_task():
         deadline_str = request.form.get("deadline")
         deadline = date.fromisoformat(deadline_str) if deadline_str else None
         required_skills = request.form.get("required_skills", "").strip()
+        if not required_skills:
+            abort(400)
 
         task = Task(
             title=title,
@@ -82,6 +97,12 @@ def new_task():
             owner_id=current_user.id,
         )
         db.session.add(task)
+        db.session.commit()
+        # Eligibility is derived from required_skills the moment the task
+        # exists, so the board and the notification both reflect the
+        # current worker pool from the start - an admin's global refresh
+        # later only matters once that pool has moved on.
+        refresh_task_eligibility(task)
         db.session.commit()
         notify_new_task(task)
         return redirect(url_for("tasks.list_tasks"))
@@ -102,6 +123,7 @@ def claim_task(task_id):
     task.status = "claimed"
     task.claimed_at = datetime.utcnow()
     db.session.commit()
+    notify_task_claimed(task)
     return _render_row(task)
 
 
@@ -113,13 +135,59 @@ def update_status(task_id):
         abort(403)
 
     new_status = request.form.get("new_status")
-    allowed_transitions = {"claimed": "in_progress", "in_progress": "done"}
+    # A worker can carry a task up to pending_review - only the task's own
+    # creator can move it from there into done (or send it back).
+    allowed_transitions = {"claimed": "in_progress", "in_progress": "pending_review"}
     if allowed_transitions.get(task.status) != new_status:
         abort(400)
 
     task.status = new_status
-    if new_status == "done":
+    db.session.commit()
+    if new_status == "pending_review":
+        notify_task_submitted_for_review(task)
+    return _render_row(task)
+
+
+@bp.route("/tasks/<int:task_id>/review", methods=["POST"])
+@login_required
+def review_task(task_id):
+    task = Task.query.get_or_404(task_id)
+    # Deliberately narrower than reassignment: only the task's own creator
+    # vets it, not any creator.
+    if not current_user.is_creator or task.owner_id != current_user.id:
+        abort(403)
+    if task.status != "pending_review":
+        abort(400)
+
+    decision = request.form.get("decision")
+    if decision == "approve":
+        task.status = "done"
         task.completed_at = datetime.utcnow()
+    elif decision == "reject":
+        task.status = "in_progress"
+    else:
+        abort(400)
+
+    db.session.commit()
+    return _render_row(task)
+
+
+@bp.route("/tasks/<int:task_id>/edit-skills", methods=["POST"])
+@login_required
+def edit_skills(task_id):
+    task = Task.query.get_or_404(task_id)
+    if not current_user.is_admin or task.status == "done":
+        abort(403)
+
+    required_skills = request.form.get("required_skills", "").strip()
+    if not required_skills:
+        abort(400)
+
+    task.required_skills = required_skills
+    db.session.commit()
+    # Criteria just changed, so the old snapshot no longer means anything -
+    # this always recomputes, independent of the admin's global refresh.
+    refresh_task_eligibility(task)
     db.session.commit()
     return _render_row(task)
 
@@ -128,7 +196,10 @@ def update_status(task_id):
 @login_required
 def reassign_task(task_id):
     task = Task.query.get_or_404(task_id)
-    if not current_user.is_creator or task.status == "done":
+    # Admin holds this override too, even on an account that isn't also a
+    # creator - "editing the filter criteria or overriding a W's bid" is
+    # explicitly an admin power, not just a creator one.
+    if not (current_user.is_creator or current_user.is_admin) or task.status == "done":
         abort(403)
 
     assignee_id = request.form.get("assignee_id")
@@ -142,27 +213,6 @@ def reassign_task(task_id):
         task.status = "open"
         task.claimed_at = None
 
-    db.session.commit()
-    return _render_row(task)
-
-
-@bp.route("/tasks/<int:task_id>/run-selection", methods=["POST"])
-@login_required
-def run_selection(task_id):
-    task = Task.query.get_or_404(task_id)
-    if not current_user.is_admin:
-        abort(403)
-
-    required = parse_skills(task.required_skills)
-    TaskEligibility.query.filter_by(task_id=task.id).delete()
-
-    now = datetime.utcnow()
-    if required:
-        for worker in User.query.filter_by(role="worker").all():
-            if required.issubset(parse_skills(worker.skills)):
-                db.session.add(TaskEligibility(task_id=task.id, user_id=worker.id, computed_at=now))
-
-    task.eligibility_computed_at = now
     db.session.commit()
     return _render_row(task)
 

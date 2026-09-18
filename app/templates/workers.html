@@ -2,9 +2,14 @@
 {% block content %}
 <h1>Workers</h1>
 <p class="muted">
-  Edit a worker's skills, then go run selection on any task that needs
-  re-matching against the updated pool.
+  Edit skills or add workers below, then use Refresh to recompute which
+  tasks each worker is now eligible for - the pool keeps changing, so
+  eligibility doesn't update on its own.
 </p>
+<form method="post" action="{{ url_for('admin.refresh_eligibility') }}" class="refresh-eligibility-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button type="submit">Refresh worker eligibility for all tasks</button>
+</form>
 <table>
   <thead><tr><th>Name</th><th>Username</th><th>Skills</th><th></th></tr></thead>
   <tbody>
