@@ -36,12 +36,23 @@ every task is filtered down to just the workers who can actually do it:
   text, comma-separated (e.g. `python, aws`), and it's **mandatory**: every
   task is skill-gated, there's no "open to everyone" option. Only that
   task's creator sets it at creation time - it isn't an admin power.
-- Each worker has a `skills` field (also free text, comma-separated),
-  managed on the **Workers** page (visible to admins only).
-- Matching is "worker has all of the task's required skills," and it's
-  computed **immediately when the task is created** - the board and the
-  Teams notification (below) both reflect real eligibility from the start,
-  not an empty snapshot waiting on a manual step.
+- Each worker has a `skills` field (also free text, comma-separated) and an
+  `experience` field (years, a plain non-negative integer), both managed on
+  the **Workers** page (visible to admins only).
+- Matching is "worker has all of the task's required skills, and enough
+  experience," computed **immediately when the task is created** - the
+  board and the Teams notification (below) both reflect real eligibility
+  from the start, not an empty snapshot waiting on a manual step.
+- One item in `required_skills` can be a **years-of-experience band**
+  instead of a skill tag: `"5+ years"` (at least 5), `"3-5 years"` (3 to 5
+  inclusive), or the looser phrasing real users tend to type - `"8+ yrs
+  experience"`, `"5+ years of experience"` - all parsed the same way. It's
+  recognized case-insensitively and compared against the worker's
+  `experience` field; it is **not** matched as a literal skill tag the way
+  everything else in the list is. At most one band is recognized per task
+  - a second one is treated as a plain (and very unlikely to ever match)
+  skill tag. Anything that doesn't look like a band - `python`, `aws`, - is
+  just a plain skill tag, exactly as before.
 - The catch: it's a snapshot, not a live check, so it goes stale as the
   worker pool changes after that (new workers join, existing ones update
   their skills). There's no per-task button to fix that: an **admin**
@@ -71,6 +82,29 @@ still strictly a creator's job.
 
 This is a skeleton: matching is a simple set-membership check (no fuzzy
 matching, synonyms, or weighting).
+
+## Bulk-adding workers
+
+The W pool keeps growing, and adding people one at a time through the "Add
+worker" form doesn't scale. Instead:
+
+- Copy `bulk_workers.txt.example` to `bulk_workers.txt` and add one line
+  per worker: `username,display_name,password,experience,skills` (skills
+  can itself contain commas - only the first four commas are treated as
+  field separators, so `worker7,Worker Seven,changeme123,4,python,aws,docker`
+  gives `experience = 4` and `skills = "python,aws,docker"`). `experience`
+  is years, a non-negative integer; blank defaults to `0`.
+- On the **Workers** page, click **Import workers from bulk_workers.txt**
+  (admin only). Existing usernames are skipped, not overwritten - this
+  only adds new workers, it never resets a password or clobbers someone's
+  skills or experience by re-importing.
+- It reports back how many were created, how many skipped (already
+  existed), and how many rows were invalid (missing username/display
+  name/password, or a non-numeric/negative experience value).
+- Same convention as the Teams webhook files: `bulk_workers.txt` is
+  maintained directly on the server, not uploaded through the browser,
+  and it's gitignored since it holds plaintext passwords - delete it (or
+  at least the passwords) once you're done importing.
 
 ## MS Teams notifications
 
@@ -148,7 +182,7 @@ app/
   utils.py          parse_skills() - shared skill-matching helper
   auth.py           login/logout routes
   tasks.py          task board, claim/status/review/reassign/edit-skills, leaderboard
-  admin.py          worker list, skills editing, add-worker, refresh-eligibility (admin only)
+  admin.py          worker list, skills editing, add-worker, bulk-import, refresh-eligibility (admin only)
   notifications.py  MS Teams webhook fan-out (new task / claimed / submitted for review)
   templates/        Jinja templates (+ htmx partial for task rows)
   static/style.css
@@ -157,6 +191,7 @@ run.py                              dev server entrypoint
 config.py                           SECRET_KEY / DB URL / Teams webhook files, overridable via env vars
 teams_webhooks_workers.txt.example  template - copy to teams_webhooks_workers.txt (gitignored)
 teams_webhooks_creators.txt.example template - copy to teams_webhooks_creators.txt (gitignored)
+bulk_workers.txt.example            template - copy to bulk_workers.txt (gitignored) to bulk-add workers
 ```
 
 Data lives in a single SQLite file (`taskbidder.db`), created automatically.

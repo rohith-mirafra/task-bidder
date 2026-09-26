@@ -7,3 +7,4 @@ instance/
 teams_webhooks_workers.txt
 teams_webhooks_creators.txt
 Webhook_teams_URL
+bulk_workers.txt

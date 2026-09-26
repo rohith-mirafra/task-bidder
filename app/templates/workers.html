@@ -11,22 +11,23 @@
   <button type="submit">Refresh worker eligibility for all tasks</button>
 </form>
 <table>
-  <thead><tr><th>Name</th><th>Username</th><th>Skills</th><th></th></tr></thead>
+  <thead><tr><th>Name</th><th>Username</th><th>Experience</th><th>Skills</th><th></th></tr></thead>
   <tbody>
     {% for w in workers %}
     <tr>
       <td>{{ w.display_name }}</td>
       <td>{{ w.username }}</td>
-      <td colspan="2">
-        <form method="post" action="{{ url_for('admin.update_skills', user_id=w.id) }}" class="skills-form">
+      <td colspan="3">
+        <form method="post" action="{{ url_for('admin.update_worker', user_id=w.id) }}" class="skills-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="number" name="experience" value="{{ w.experience }}" min="0" step="1" class="experience-input" title="years of experience">
           <input type="text" name="skills" value="{{ w.skills or '' }}" placeholder="e.g. python, aws, react">
           <button type="submit">Save</button>
         </form>
       </td>
     </tr>
     {% else %}
-      <tr><td colspan="4" class="empty">No workers yet.</td></tr>
+      <tr><td colspan="5" class="empty">No workers yet.</td></tr>
     {% endfor %}
   </tbody>
 </table>
@@ -37,7 +38,20 @@
   <label>Username <input type="text" name="username" required></label>
   <label>Display name <input type="text" name="display_name" required></label>
   <label>Temporary password <input type="text" name="password" required></label>
+  <label>Experience (years) <input type="number" name="experience" value="0" min="0" step="1"></label>
   <label>Skills (comma-separated) <input type="text" name="skills" placeholder="e.g. python, aws, react"></label>
   <button type="submit">Add worker</button>
+</form>
+
+<h2>Bulk import workers</h2>
+<p class="muted">
+  Add rows to <code>bulk_workers.txt</code> on the server first (one per
+  worker: <code>username,display_name,password,experience,skills</code> -
+  see <code>bulk_workers.txt.example</code>), then import them here.
+  Existing usernames are skipped, not overwritten.
+</p>
+<form method="post" action="{{ url_for('admin.bulk_import_workers') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button type="submit">Import workers from bulk_workers.txt</button>
 </form>
 {% endblock %}

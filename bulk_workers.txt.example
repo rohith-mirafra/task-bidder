@@ -1,0 +1,27 @@
+# One worker per line: "username,display_name,password,experience,skills"
+#
+#   username      - login username, must be unique (existing usernames are
+#                   skipped, not overwritten - this only adds new workers)
+#   display_name  - shown throughout the app
+#   password      - a plaintext temporary password (change it later)
+#   experience    - years of experience, a non-negative integer (blank
+#                   defaults to 0). Compared against a years-of-experience
+#                   band if one appears in a task's required_skills - see
+#                   the "Bulk-adding workers" section of README.md.
+#   skills        - comma-separated, and may contain any number of commas
+#                   itself - everything after the 4th comma is taken as
+#                   the skills string as-is, e.g.:
+#
+# worker7,Worker Seven,changeme123,4,python,aws,docker
+# worker8,Worker Eight,changeme123,1,react,css
+#
+# A row missing username, display_name, or password is skipped as invalid,
+# and so is a non-numeric or negative experience value. Blank lines and
+# lines starting with # are ignored.
+#
+# Maintained directly by admins by editing this file on the server - not
+# uploaded through the web UI. Copy this file to bulk_workers.txt (drop
+# the .example) and fill in real rows, then use the "Import workers" button
+# on the Workers page (admin only). That file is gitignored since it holds
+# plaintext passwords - treat it like a secret and delete it once you're
+# done importing.

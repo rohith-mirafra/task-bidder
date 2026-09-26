@@ -25,3 +25,10 @@ class Config:
     # Used to build a "View task board" link in Teams notifications. Leave
     # unset while running locally - the link is simply omitted.
     APP_BASE_URL = os.environ.get("APP_BASE_URL")
+
+    # "username,display_name,password,skills" per line - an admin drops
+    # workers here and clicks Import on the Workers page. Not through the
+    # web UI itself (no file upload) - see bulk_workers.txt.example.
+    BULK_WORKERS_FILE = os.environ.get(
+        "BULK_WORKERS_FILE", os.path.join(basedir, "bulk_workers.txt")
+    )

@@ -13,6 +13,9 @@ class User(db.Model, UserMixin):
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(10), nullable=False)  # 'creator' or 'worker'
     skills = db.Column(db.Text, default="")  # worker capabilities, free text e.g. "python, aws"
+    # Years of experience, compared against a years-of-experience band that
+    # may appear as one segment of a task's required_skills (e.g. "5+ years").
+    experience = db.Column(db.Integer, nullable=False, default=0)
     # Independent of role - a status any user can carry, not a third role.
     # Lets someone be a creator (or worker) *and* an admin on one account,
     # and there can be more than one admin at a time.

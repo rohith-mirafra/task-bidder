@@ -135,6 +135,7 @@ th { background: #fafafa; font-size: 0.85rem; color: var(--muted); }
 .skills-tag { font-size: 0.8rem; color: var(--accent); margin-top: 0.15rem; }
 .skills-form { display: flex; gap: 0.4rem; align-items: center; }
 .skills-form input[type="text"] { flex: 1; padding: 0.35rem; border-radius: 6px; border: 1px solid var(--border); }
+.experience-input { width: 4.5em; padding: 0.35rem; border-radius: 6px; border: 1px solid var(--border); }
 
 .login-box {
   max-width: 320px;
